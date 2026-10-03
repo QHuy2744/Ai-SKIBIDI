@@ -1,99 +1,1030 @@
-<!doctype html>
+<!DOCTYPE html>
 <html lang="vi">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width,initial-scale=1">
-<title>AI Survival Lab</title>
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+<title>AI Survival</title>
+
 <style>
-body{margin:0;background:#070b13;color:#edf2ff;font-family:system-ui,sans-serif}
-.app{max-width:900px;margin:auto;padding:16px}
-.card{background:#101827;border:1px solid #26334d;border-radius:17px;padding:15px;margin:12px 0}
-.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
-.money{font-size:38px;font-weight:900}.badge{padding:5px 9px;border-radius:99px;background:#172540;color:#a9bcf2;font-size:12px;font-weight:800}
-button,input{font:inherit}button{border:1px solid #344765;border-radius:11px;padding:10px 13px;background:#18263d;color:#fff;font-weight:800}
-button.primary{background:#485ee1;border-color:#5d73fa}
-input{width:100%;padding:10px;border-radius:10px;border:1px solid #30405e;background:#0a111e;color:#fff}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.line{padding:8px 0;border-bottom:1px solid #1c2740}
-.small{font-size:12px;color:#8290ad}.good{color:#62e29c}.bad{color:#ff707e}.warn{color:#ffd166}
-.log{height:300px;overflow:auto;background:#060a11;border-radius:12px;padding:8px;font:12px monospace}
-@media(max-width:760px){.grid{grid-template-columns:1fr}.money{font-size:33px}}
+* {
+  box-sizing: border-box;
+}
+
+body {
+  margin: 0;
+  background: #0b0f14;
+  color: #e8edf3;
+  font-family: Arial, sans-serif;
+}
+
+.container {
+  max-width: 900px;
+  margin: auto;
+  padding: 20px;
+}
+
+h1 {
+  text-align: center;
+  margin-bottom: 5px;
+}
+
+.subtitle {
+  text-align: center;
+  color: #8993a0;
+  margin-bottom: 20px;
+}
+
+.stats {
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+.card {
+  background: #121821;
+  border: 1px solid #27313d;
+  border-radius: 12px;
+  padding: 15px;
+}
+
+.stat-title {
+  color: #8993a0;
+  font-size: 13px;
+}
+
+.stat-value {
+  font-size: 20px;
+  font-weight: bold;
+  margin-top: 5px;
+}
+
+.controls {
+  display: flex;
+  gap: 10px;
+  flex-wrap: wrap;
+  margin-bottom: 15px;
+}
+
+button {
+  border: 0;
+  border-radius: 10px;
+  padding: 12px 16px;
+  background: #263241;
+  color: white;
+  font-size: 15px;
+  cursor: pointer;
+}
+
+button:hover {
+  background: #344354;
+}
+
+button:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.primary {
+  background: #315ee8;
+}
+
+.primary:hover {
+  background: #4070ff;
+}
+
+.danger {
+  background: #8e3030;
+}
+
+.section {
+  margin-top: 12px;
+}
+
+.section-title {
+  font-weight: bold;
+  margin-bottom: 7px;
+  color: #9fb7ff;
+}
+
+.content {
+  background: #121821;
+  border: 1px solid #27313d;
+  border-radius: 12px;
+  padding: 15px;
+  min-height: 50px;
+  white-space: pre-wrap;
+  word-break: break-word;
+}
+
+.log {
+  max-height: 220px;
+  overflow-y: auto;
+  font-family: monospace;
+  font-size: 13px;
+}
+
+.status {
+  padding: 10px;
+  border-radius: 10px;
+  background: #121821;
+  border: 1px solid #27313d;
+  margin-bottom: 15px;
+}
+
+.online {
+  color: #6ee7a0;
+}
+
+.waiting {
+  color: #ffd166;
+}
+
+.error {
+  color: #ff7777;
+}
+
+@media (max-width: 650px) {
+  .stats {
+    grid-template-columns: repeat(2, 1fr);
+  }
+}
 </style>
 </head>
+
 <body>
-<div class="app">
-<h1>🤖 AI SURVIVAL LAB <span class="badge">RAILWAY + REAL WEB</span></h1>
-<p class="small">AI tự nghiên cứu web và tự chọn hành động trong nền kinh tế mô phỏng.</p>
 
-<div class="card">
-<div class="row"><b>HuyBot-01 <span id="status" class="badge">🟢 ALIVE</span></b><div id="money" class="money">100.000₫</div></div>
-<div class="small">Ngày <span id="day">1</span> · Lượt <span id="turn">0</span> · Năng lượng <span id="energy">100</span> · Kiến thức <span id="knowledge">10</span></div>
+<div class="container">
+
+  <h1>🤖 AI SURVIVAL</h1>
+
+  <div class="subtitle">
+    Autonomous Web Survival Simulator
+  </div>
+
+  <!-- STATUS -->
+
+  <div class="status">
+    Trạng thái:
+    <span id="status" class="waiting">
+      Sẵn sàng
+    </span>
+  </div>
+
+  <!-- STATS -->
+
+  <div class="stats">
+
+    <div class="card">
+      <div class="stat-title">💰 Ví</div>
+      <div class="stat-value" id="wallet">
+        100.000₫
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-title">📅 Ngày</div>
+      <div class="stat-value" id="day">
+        1
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-title">🔄 Lượt</div>
+      <div class="stat-value" id="turn">
+        0
+      </div>
+    </div>
+
+    <div class="card">
+      <div class="stat-title">⚡ Năng lượng</div>
+      <div class="stat-value" id="energy">
+        100
+      </div>
+    </div>
+
+  </div>
+
+  <!-- BUTTONS -->
+
+  <div class="controls">
+
+    <button
+      id="runBtn"
+      class="primary"
+      onclick="runAgent()">
+      ▶️ Chạy AI
+    </button>
+
+    <button
+      id="autoBtn"
+      onclick="toggleAuto()">
+      🔁 Bật Auto
+    </button>
+
+    <button
+      class="danger"
+      onclick="resetSimulation()">
+      🔄 Reset
+    </button>
+
+  </div>
+
+  <!-- THOUGHT -->
+
+  <div class="section">
+    <div class="section-title">
+      🧠 AI suy nghĩ
+    </div>
+
+    <div
+      id="thought"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- SEARCH -->
+
+  <div class="section">
+    <div class="section-title">
+      🔎 Search query
+    </div>
+
+    <div
+      id="search"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- FINDINGS -->
+
+  <div class="section">
+    <div class="section-title">
+      🌐 Web findings
+    </div>
+
+    <div
+      id="findings"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- OPPORTUNITY -->
+
+  <div class="section">
+    <div class="section-title">
+      💡 Opportunity
+    </div>
+
+    <div
+      id="opportunity"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- ACTION -->
+
+  <div class="section">
+    <div class="section-title">
+      ⚡ Action
+    </div>
+
+    <div
+      id="action"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- LESSON -->
+
+  <div class="section">
+    <div class="section-title">
+      📚 Lesson
+    </div>
+
+    <div
+      id="lesson"
+      class="content">
+      Chưa có dữ liệu.
+    </div>
+  </div>
+
+  <!-- LOG -->
+
+  <div class="section">
+    <div class="section-title">
+      📜 Log
+    </div>
+
+    <div
+      id="log"
+      class="content log">
+      Simulator started.
+    </div>
+  </div>
+
 </div>
 
-<div class="card">
-<b>🔌 Railway Backend</b>
-<p class="small">Đã điền sẵn link Railway của bạn.</p>
-<input id="endpoint" value="https://ai-skibidi-production.up.railway.app" readonly>
-<br><br>
-<button class="primary" onclick="runAgent()">🧠 Cho AI tự tìm web</button>
-<button onclick="toggleAuto()" id="autoBtn">▶️ Tự chạy</button>
-<button onclick="resetSim()">↻ Reset</button>
-</div>
-
-<div class="grid">
-<div class="card"><h3>🧠 Quyết định</h3><div id="thought" class="line">Chưa chạy.</div><div id="action" class="line">Chưa có hành động.</div><div id="lesson" class="line">Chưa có bài học.</div></div>
-<div class="card"><h3>🌐 Cơ hội AI vừa tìm</h3><div id="findings">Chưa có dữ liệu.</div></div>
-</div>
-
-<div class="card"><h3>📜 Log</h3><div id="log" class="log"></div></div>
-</div>
 
 <script>
-const ENDPOINT="https://ai-skibidi-production.up.railway.app";
-let timer=null;
-let state={wallet_vnd:100000,day:1,turn:0,energy:100,knowledge:10,reputation:10,memories:[],previous_actions:[]};
-const $=id=>document.getElementById(id);
-const fmt=n=>Math.floor(Number(n)||0).toLocaleString("vi-VN")+"₫";
-function addLog(t,c=""){let e=document.createElement("div");e.className="line "+c;e.textContent=t;$("log").prepend(e)}
-function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
-function render(){
- $("money").textContent=fmt(state.wallet_vnd);$("day").textContent=state.day;$("turn").textContent=state.turn;
- $("energy").textContent=Math.floor(state.energy);$("knowledge").textContent=Math.floor(state.knowledge);
- $("status").textContent=state.wallet_vnd>0?"🟢 ALIVE":"💀 DELETED";
-}
-async function runAgent(){
- if(state.wallet_vnd<=0){addLog("💀 AI đã bị xoá sổ.","bad");stopAuto();return}
- addLog("🌐 AI đang tìm kiếm cơ hội trên web...","warn");
- try{
-  const r=await fetch(ENDPOINT+"/api/agent",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state})});
-  const data=await r.json();
-  if(!r.ok||!data.ok)throw new Error(data.error||"Backend error");
-  let x=data.result;
-  if(!x&&data.output_text)x=JSON.parse(data.output_text);
-  if(!x)throw new Error("Backend không trả về kết quả AI.");
 
-  const cost=Math.max(0,Number(x.cost_vnd)||0), reward=Math.max(0,Number(x.reward_vnd)||0);
-  state.turn++;if(state.turn%5===0)state.day++;
-  if(cost>state.wallet_vnd)state.wallet_vnd=0;else state.wallet_vnd=state.wallet_vnd-cost+reward;
-  state.energy=Math.max(0,state.energy-5);state.knowledge=Math.min(100,state.knowledge+2);
-  state.previous_actions.unshift({action:x.action||"",site:x.site||"",cost_vnd:cost,reward_vnd:reward});
-  state.previous_actions=state.previous_actions.slice(0,12);
-  if(x.lesson){state.memories.unshift(x.lesson);state.memories=state.memories.slice(0,12)}
+/* ==================================================
+   BACKEND
+================================================== */
 
-  $("thought").textContent=x.thought||"";
-  $("action").textContent="🎯 "+(x.action||"?")+" → "+(x.site||"không có site")+" | chi mô phỏng "+fmt(cost)+" | thưởng mô phỏng +"+fmt(reward)+" | "+(x.reason||"");
-  $("lesson").textContent="📚 "+(x.lesson||"");
-  $("findings").innerHTML='<div class="line"><b>🔎 Truy vấn:</b> '+esc(x.search_query||"")+'</div><div class="line"><b>🌐 Kết quả:</b> '+esc(x.findings||"Không có dữ liệu.")+'</div><div class="line"><b>💡 Cơ hội:</b> '+esc(x.opportunity||"")+'</div>';
-  addLog("🔎 "+(x.search_query||"web search"),"good");
-  addLog("🎯 "+(x.action||"?")+" / "+(x.site||"?")+" | -"+fmt(cost)+" +"+fmt(reward));
-  render();
-  if(state.wallet_vnd<=0){addLog("💀 SỐ DƯ = 0₫ → AI BỊ XOÁ SỔ.","bad");stopAuto()}
- }catch(e){addLog("❌ "+e.message,"bad")}
+const ENDPOINT =
+  "https://ai-skibidi-production.up.railway.app";
+
+
+/* ==================================================
+   GAME STATE
+================================================== */
+
+let wallet = 100000;
+
+let day = 1;
+
+let turn = 0;
+
+let energy = 100;
+
+let knowledge = [];
+
+let autoMode = false;
+
+let running = false;
+
+let autoTimer = null;
+
+
+/*
+  45 giây giữa mỗi lượt Auto.
+
+  Có thể đổi thành:
+  30000 = 30 giây
+  45000 = 45 giây
+  60000 = 60 giây
+*/
+const AUTO_DELAY = 45000;
+
+
+/* ==================================================
+   ELEMENT
+================================================== */
+
+function $(id) {
+  return document.getElementById(id);
 }
-function startAuto(){if(timer)return;$("autoBtn").textContent="⏸️ Dừng";runAgent();timer=setInterval(runAgent,10000)}
-function stopAuto(){if(timer){clearInterval(timer);timer=null}$("autoBtn").textContent="▶️ Tự chạy"}
-function toggleAuto(){timer?stopAuto():startAuto()}
-function resetSim(){stopAuto();state={wallet_vnd:100000,day:1,turn:0,energy:100,knowledge:10,reputation:10,memories:[],previous_actions:[]};$("thought").textContent="Chưa chạy.";$("action").textContent="Chưa có hành động.";$("lesson").textContent="Chưa có bài học.";$("findings").textContent="Chưa có dữ liệu.";$("log").innerHTML="";render();addLog("🚀 AI mới được tạo với 100.000₫")}
-render();addLog("🚀 Sẵn sàng. Railway backend đã được cài sẵn.");
+
+
+/* ==================================================
+   FORMAT MONEY
+================================================== */
+
+function money(value) {
+
+  return Math.round(value)
+    .toLocaleString("vi-VN") + "₫";
+
+}
+
+
+/* ==================================================
+   UPDATE UI
+================================================== */
+
+function updateUI() {
+
+  $("wallet").textContent =
+    money(wallet);
+
+  $("day").textContent =
+    day;
+
+  $("turn").textContent =
+    turn;
+
+  $("energy").textContent =
+    energy;
+
+}
+
+
+/* ==================================================
+   LOG
+================================================== */
+
+function addLog(message) {
+
+  const time =
+    new Date().toLocaleTimeString("vi-VN");
+
+  $("log").textContent =
+    `[${time}] ${message}\n` +
+    $("log").textContent;
+
+}
+
+
+/* ==================================================
+   STATUS
+================================================== */
+
+function setStatus(
+  text,
+  type = "waiting"
+) {
+
+  const el = $("status");
+
+  el.textContent = text;
+
+  el.className = type;
+
+}
+
+
+/* ==================================================
+   RUN AI
+================================================== */
+
+async function runAgent() {
+
+  /*
+    CHỐNG SPAM:
+
+    Nếu một request đang chạy,
+    không cho request thứ hai chạy.
+  */
+
+  if (running) {
+
+    addLog(
+      "⏳ AI vẫn đang xử lý lượt trước."
+    );
+
+    return;
+
+  }
+
+
+  /*
+    Nếu wallet = 0 thì AI chết.
+  */
+
+  if (wallet <= 0) {
+
+    setStatus(
+      "💀 AI đã chết — hết tiền",
+      "error"
+    );
+
+    addLog(
+      "💀 AI đã bị xóa vì wallet = 0."
+    );
+
+    stopAuto();
+
+    return;
+
+  }
+
+
+  running = true;
+
+
+  $("runBtn").disabled = true;
+
+
+  setStatus(
+    "🔎 AI đang tìm kiếm web...",
+    "waiting"
+  );
+
+
+  addLog(
+    "🚀 Bắt đầu lượt AI."
+  );
+
+
+  /*
+    State gửi cho backend
+  */
+
+  const state = {
+
+    wallet: wallet,
+
+    day: day,
+
+    turn: turn,
+
+    energy: energy,
+
+    knowledge: knowledge.slice(-10)
+
+  };
+
+
+  try {
+
+    const response =
+      await fetch(
+        ENDPOINT + "/api/agent",
+        {
+          method: "POST",
+
+          headers: {
+            "Content-Type":
+              "application/json"
+          },
+
+          body:
+            JSON.stringify({
+              state: state
+            })
+        }
+      );
+
+
+    /*
+      Đọc response an toàn
+    */
+
+    let data = {};
+
+    try {
+
+      data =
+        await response.json();
+
+    } catch {
+
+      throw new Error(
+        "Server không trả về JSON."
+      );
+
+    }
+
+
+    /*
+      RATE LIMIT
+
+      Nếu OpenAI trả 429,
+      tuyệt đối không retry liên tục.
+    */
+
+    if (response.status === 429) {
+
+      const error =
+        data.error ||
+        "API rate limit.";
+
+      setStatus(
+        "⏳ Rate limit — Auto đã dừng",
+        "error"
+      );
+
+      addLog(
+        "🚫 " + error
+      );
+
+      stopAuto();
+
+      return;
+
+    }
+
+
+    /*
+      Lỗi server
+    */
+
+    if (!response.ok) {
+
+      throw new Error(
+        data.error ||
+        `HTTP ${response.status}`
+      );
+
+    }
+
+
+    /*
+      Lấy kết quả AI
+    */
+
+    const result =
+      data.result;
+
+
+    if (!result) {
+
+      throw new Error(
+        "Không nhận được kết quả AI."
+      );
+
+    }
+
+
+    /* ==========================================
+       HIỂN THỊ
+    ========================================== */
+
+    $("thought").textContent =
+      result.thought || "—";
+
+
+    $("search").textContent =
+      result.search_query || "—";
+
+
+    $("findings").textContent =
+      result.findings || "—";
+
+
+    $("opportunity").textContent =
+      result.opportunity || "—";
+
+
+    $("action").textContent =
+      result.action || "—";
+
+
+    $("lesson").textContent =
+      result.lesson || "—";
+
+
+    /* ==========================================
+       TIỀN MÔ PHỎNG
+    ========================================== */
+
+    const cost =
+      Number(result.cost_vnd) || 0;
+
+    const reward =
+      Number(result.reward_vnd) || 0;
+
+
+    /*
+      Không cho AI tự làm wallet âm
+    */
+
+    const safeCost =
+      Math.min(
+        Math.max(0, cost),
+        wallet
+      );
+
+
+    const safeReward =
+      Math.max(0, reward);
+
+
+    wallet =
+      wallet -
+      safeCost +
+      safeReward;
+
+
+    /*
+      Năng lượng giảm nhẹ
+    */
+
+    energy =
+      Math.max(
+        0,
+        energy - 5
+      );
+
+
+    /*
+      Nếu có lesson thì lưu lại
+    */
+
+    if (result.lesson) {
+
+      knowledge.push(
+        result.lesson
+      );
+
+    }
+
+
+    /*
+      Tăng lượt
+    */
+
+    turn++;
+
+
+    /*
+      Mỗi 10 lượt = sang ngày mới
+    */
+
+    if (turn % 10 === 0) {
+
+      day++;
+
+      energy = 100;
+
+    }
+
+
+    updateUI();
+
+
+    addLog(
+      `✅ Lượt ${turn}: ` +
+      `-${money(safeCost)} ` +
+      `+${money(safeReward)}`
+    );
+
+
+    setStatus(
+      "✅ AI đã hoàn thành lượt",
+      "online"
+    );
+
+
+    /*
+      Kiểm tra AI chết
+    */
+
+    if (wallet <= 0) {
+
+      wallet = 0;
+
+      updateUI();
+
+      setStatus(
+        "💀 AI đã chết — hết tiền",
+        "error"
+      );
+
+      addLog(
+        "💀 Simulation Over."
+      );
+
+      stopAuto();
+
+    }
+
+
+  } catch (error) {
+
+    console.error(error);
+
+
+    setStatus(
+      "❌ " + error.message,
+      "error"
+    );
+
+
+    addLog(
+      "❌ " + error.message
+    );
+
+
+  } finally {
+
+    /*
+      QUAN TRỌNG:
+
+      Cho phép lượt tiếp theo
+      sau khi request hoàn thành.
+    */
+
+    running = false;
+
+    $("runBtn").disabled = false;
+
+  }
+
+}
+
+
+/* ==================================================
+   AUTO MODE
+================================================== */
+
+function toggleAuto() {
+
+  if (autoMode) {
+
+    stopAuto();
+
+  } else {
+
+    startAuto();
+
+  }
+
+}
+
+
+/* ==================================================
+   START AUTO
+================================================== */
+
+function startAuto() {
+
+  if (autoMode) {
+    return;
+  }
+
+
+  autoMode = true;
+
+
+  $("autoBtn").textContent =
+    "⏸️ Dừng Auto";
+
+
+  addLog(
+    "🔁 Auto Mode đã bật."
+  );
+
+
+  /*
+    Chạy ngay 1 lượt.
+  */
+
+  runAgent();
+
+
+  /*
+    Không dùng setInterval.
+
+    Dùng setTimeout sau mỗi lượt
+    để tránh request chồng nhau.
+  */
+
+  scheduleNextAuto();
+
+}
+
+
+/* ==================================================
+   SCHEDULE AUTO
+================================================== */
+
+function scheduleNextAuto() {
+
+  if (!autoMode) {
+    return;
+  }
+
+
+  clearTimeout(autoTimer);
+
+
+  autoTimer =
+    setTimeout(
+      async () => {
+
+        /*
+          Nếu lượt trước vẫn đang chạy,
+          không gọi thêm.
+        */
+
+        if (!running) {
+
+          await runAgent();
+
+        } else {
+
+          addLog(
+            "⏳ Bỏ qua lượt Auto vì AI vẫn đang chạy."
+          );
+
+        }
+
+
+        /*
+          Lên lịch lượt tiếp theo
+        */
+
+        scheduleNextAuto();
+
+      },
+      AUTO_DELAY
+    );
+
+}
+
+
+/* ==================================================
+   STOP AUTO
+================================================== */
+
+function stopAuto() {
+
+  autoMode = false;
+
+
+  clearTimeout(
+    autoTimer
+  );
+
+
+  autoTimer = null;
+
+
+  $("autoBtn").textContent =
+    "🔁 Bật Auto";
+
+
+  addLog(
+    "⏸️ Auto Mode đã dừng."
+  );
+
+}
+
+
+/* ==================================================
+   RESET
+================================================== */
+
+function resetSimulation() {
+
+  stopAuto();
+
+
+  wallet = 100000;
+
+  day = 1;
+
+  turn = 0;
+
+  energy = 100;
+
+  knowledge = [];
+
+
+  $("thought").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("search").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("findings").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("opportunity").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("action").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("lesson").textContent =
+    "Chưa có dữ liệu.";
+
+
+  $("log").textContent =
+    "Simulator reset.";
+
+
+  setStatus(
+    "Sẵn sàng",
+    "waiting"
+  );
+
+
+  updateUI();
+
+
+  addLog(
+    "🔄 Simulation đã reset."
+  );
+
+}
+
+
+/* ==================================================
+   INIT
+================================================== */
+
+updateUI();
+
+setStatus(
+  "Sẵn sàng",
+  "waiting"
+);
+
 </script>
+
 </body>
 </html>
