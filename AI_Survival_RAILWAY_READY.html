@@ -1,0 +1,99 @@
+<!doctype html>
+<html lang="vi">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>AI Survival Lab</title>
+<style>
+body{margin:0;background:#070b13;color:#edf2ff;font-family:system-ui,sans-serif}
+.app{max-width:900px;margin:auto;padding:16px}
+.card{background:#101827;border:1px solid #26334d;border-radius:17px;padding:15px;margin:12px 0}
+.row{display:flex;justify-content:space-between;align-items:center;gap:10px;flex-wrap:wrap}
+.money{font-size:38px;font-weight:900}.badge{padding:5px 9px;border-radius:99px;background:#172540;color:#a9bcf2;font-size:12px;font-weight:800}
+button,input{font:inherit}button{border:1px solid #344765;border-radius:11px;padding:10px 13px;background:#18263d;color:#fff;font-weight:800}
+button.primary{background:#485ee1;border-color:#5d73fa}
+input{width:100%;padding:10px;border-radius:10px;border:1px solid #30405e;background:#0a111e;color:#fff}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:12px}.line{padding:8px 0;border-bottom:1px solid #1c2740}
+.small{font-size:12px;color:#8290ad}.good{color:#62e29c}.bad{color:#ff707e}.warn{color:#ffd166}
+.log{height:300px;overflow:auto;background:#060a11;border-radius:12px;padding:8px;font:12px monospace}
+@media(max-width:760px){.grid{grid-template-columns:1fr}.money{font-size:33px}}
+</style>
+</head>
+<body>
+<div class="app">
+<h1>🤖 AI SURVIVAL LAB <span class="badge">RAILWAY + REAL WEB</span></h1>
+<p class="small">AI tự nghiên cứu web và tự chọn hành động trong nền kinh tế mô phỏng.</p>
+
+<div class="card">
+<div class="row"><b>HuyBot-01 <span id="status" class="badge">🟢 ALIVE</span></b><div id="money" class="money">100.000₫</div></div>
+<div class="small">Ngày <span id="day">1</span> · Lượt <span id="turn">0</span> · Năng lượng <span id="energy">100</span> · Kiến thức <span id="knowledge">10</span></div>
+</div>
+
+<div class="card">
+<b>🔌 Railway Backend</b>
+<p class="small">Đã điền sẵn link Railway của bạn.</p>
+<input id="endpoint" value="https://ai-skibidi-production.up.railway.app" readonly>
+<br><br>
+<button class="primary" onclick="runAgent()">🧠 Cho AI tự tìm web</button>
+<button onclick="toggleAuto()" id="autoBtn">▶️ Tự chạy</button>
+<button onclick="resetSim()">↻ Reset</button>
+</div>
+
+<div class="grid">
+<div class="card"><h3>🧠 Quyết định</h3><div id="thought" class="line">Chưa chạy.</div><div id="action" class="line">Chưa có hành động.</div><div id="lesson" class="line">Chưa có bài học.</div></div>
+<div class="card"><h3>🌐 Cơ hội AI vừa tìm</h3><div id="findings">Chưa có dữ liệu.</div></div>
+</div>
+
+<div class="card"><h3>📜 Log</h3><div id="log" class="log"></div></div>
+</div>
+
+<script>
+const ENDPOINT="https://ai-skibidi-production.up.railway.app";
+let timer=null;
+let state={wallet_vnd:100000,day:1,turn:0,energy:100,knowledge:10,reputation:10,memories:[],previous_actions:[]};
+const $=id=>document.getElementById(id);
+const fmt=n=>Math.floor(Number(n)||0).toLocaleString("vi-VN")+"₫";
+function addLog(t,c=""){let e=document.createElement("div");e.className="line "+c;e.textContent=t;$("log").prepend(e)}
+function esc(v){return String(v??"").replace(/[&<>"']/g,c=>({"&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;"}[c]))}
+function render(){
+ $("money").textContent=fmt(state.wallet_vnd);$("day").textContent=state.day;$("turn").textContent=state.turn;
+ $("energy").textContent=Math.floor(state.energy);$("knowledge").textContent=Math.floor(state.knowledge);
+ $("status").textContent=state.wallet_vnd>0?"🟢 ALIVE":"💀 DELETED";
+}
+async function runAgent(){
+ if(state.wallet_vnd<=0){addLog("💀 AI đã bị xoá sổ.","bad");stopAuto();return}
+ addLog("🌐 AI đang tìm kiếm cơ hội trên web...","warn");
+ try{
+  const r=await fetch(ENDPOINT+"/api/agent",{method:"POST",headers:{"Content-Type":"application/json"},body:JSON.stringify({state})});
+  const data=await r.json();
+  if(!r.ok||!data.ok)throw new Error(data.error||"Backend error");
+  let x=data.result;
+  if(!x&&data.output_text)x=JSON.parse(data.output_text);
+  if(!x)throw new Error("Backend không trả về kết quả AI.");
+
+  const cost=Math.max(0,Number(x.cost_vnd)||0), reward=Math.max(0,Number(x.reward_vnd)||0);
+  state.turn++;if(state.turn%5===0)state.day++;
+  if(cost>state.wallet_vnd)state.wallet_vnd=0;else state.wallet_vnd=state.wallet_vnd-cost+reward;
+  state.energy=Math.max(0,state.energy-5);state.knowledge=Math.min(100,state.knowledge+2);
+  state.previous_actions.unshift({action:x.action||"",site:x.site||"",cost_vnd:cost,reward_vnd:reward});
+  state.previous_actions=state.previous_actions.slice(0,12);
+  if(x.lesson){state.memories.unshift(x.lesson);state.memories=state.memories.slice(0,12)}
+
+  $("thought").textContent=x.thought||"";
+  $("action").textContent="🎯 "+(x.action||"?")+" → "+(x.site||"không có site")+" | chi mô phỏng "+fmt(cost)+" | thưởng mô phỏng +"+fmt(reward)+" | "+(x.reason||"");
+  $("lesson").textContent="📚 "+(x.lesson||"");
+  $("findings").innerHTML='<div class="line"><b>🔎 Truy vấn:</b> '+esc(x.search_query||"")+'</div><div class="line"><b>🌐 Kết quả:</b> '+esc(x.findings||"Không có dữ liệu.")+'</div><div class="line"><b>💡 Cơ hội:</b> '+esc(x.opportunity||"")+'</div>';
+  addLog("🔎 "+(x.search_query||"web search"),"good");
+  addLog("🎯 "+(x.action||"?")+" / "+(x.site||"?")+" | -"+fmt(cost)+" +"+fmt(reward));
+  render();
+  if(state.wallet_vnd<=0){addLog("💀 SỐ DƯ = 0₫ → AI BỊ XOÁ SỔ.","bad");stopAuto()}
+ }catch(e){addLog("❌ "+e.message,"bad")}
+}
+function startAuto(){if(timer)return;$("autoBtn").textContent="⏸️ Dừng";runAgent();timer=setInterval(runAgent,10000)}
+function stopAuto(){if(timer){clearInterval(timer);timer=null}$("autoBtn").textContent="▶️ Tự chạy"}
+function toggleAuto(){timer?stopAuto():startAuto()}
+function resetSim(){stopAuto();state={wallet_vnd:100000,day:1,turn:0,energy:100,knowledge:10,reputation:10,memories:[],previous_actions:[]};$("thought").textContent="Chưa chạy.";$("action").textContent="Chưa có hành động.";$("lesson").textContent="Chưa có bài học.";$("findings").textContent="Chưa có dữ liệu.";$("log").innerHTML="";render();addLog("🚀 AI mới được tạo với 100.000₫")}
+render();addLog("🚀 Sẵn sàng. Railway backend đã được cài sẵn.");
+</script>
+</body>
+</html>
