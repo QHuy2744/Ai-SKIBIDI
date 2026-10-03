@@ -8,101 +8,180 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "100kb" }));
 
+// =========================
+// HOME
+// =========================
 app.get("/", (_req, res) => {
   res.json({
     ok: true,
-    name: "AI Survival Railway Backend",
+    name: "AI Survival Backend",
     message: "Backend is running."
   });
 });
 
+// =========================
+// HEALTH CHECK
+// =========================
 app.get("/health", (_req, res) => {
-  res.json({ status: "healthy", uptime: process.uptime() });
+  res.json({
+    status: "healthy",
+    uptime: process.uptime()
+  });
 });
 
+// =========================
+// AI AGENT
+// =========================
 app.post("/api/agent", async (req, res) => {
   try {
+    // Kiểm tra API key
     if (!process.env.OPENAI_API_KEY) {
-      return res.status(500).json({ error: "OPENAI_API_KEY chưa được cấu hình trên Railway." });
+      return res.status(500).json({
+        error: "OPENAI_API_KEY chưa được cấu hình trên Railway."
+      });
     }
 
     const state = req.body?.state || {};
 
-    const client = new OpenAI({ apiKey: process.env.OPENAI_API_KEY });
+    const client = new OpenAI({
+      apiKey: process.env.OPENAI_API_KEY
+    });
 
-    const prompt = `You are an autonomous survival agent inside a SAFE SIMULATED ECONOMY.
+    const prompt = `
+You are an autonomous survival AI inside a SAFE SIMULATED ECONOMY.
 
-Your goal is to survive and grow a simulated VND wallet.
-IMPORTANT: the wallet is fictional. Never spend or earn real money.
+The money in this simulation is completely fictional.
+Never perform real-money transactions.
 
-You have NO fixed action list. You must discover opportunities yourself from the public web.
-On every turn:
-1. Think about the current situation.
+Your goal is to survive and increase the simulated VND wallet.
+
+IMPORTANT:
+You do NOT have a fixed action list.
+
+Every turn you must:
+1. Analyze the current situation.
 2. Search the public web yourself.
-3. Inspect and compare what you found.
-4. Discover an opportunity rather than choosing from a predefined menu.
-5. Choose ONE simulated action.
-6. Estimate a realistic simulated result.
-7. Learn from the result and remember useful lessons.
+3. Inspect useful search results.
+4. Compare possible opportunities.
+5. Discover an opportunity yourself.
+6. Choose ONE simulated action.
+7. Estimate the fictional result.
+8. Learn something useful for the next turn.
 
-Allowed: lawful public opportunities, freelance ideas, marketplaces, educational opportunities, public tools, discounts, open opportunities and similar legitimate ideas.
-Forbidden: fraud, scams, spam, impersonation, credential theft, malware, gambling, illegal activity, CAPTCHA/security bypass, or real-money transactions.
-Never ask for or expose passwords, OTPs, card numbers, private information or API keys.
+The AI should behave autonomously and creatively.
+
+Allowed:
+- lawful public opportunities
+- freelance ideas
+- public marketplaces
+- educational opportunities
+- public tools
+- discounts
+- open opportunities
+- legitimate ways to simulate earning value
+
+Forbidden:
+- fraud
+- scams
+- spam
+- impersonation
+- credential theft
+- malware
+- gambling
+- illegal activity
+- CAPTCHA bypass
+- security bypass
+- hacking
+- real-money transactions
+
+Never ask for or expose:
+- passwords
+- OTP codes
+- credit/debit card numbers
+- private personal information
+- API keys
 
 CURRENT SIMULATED STATE:
 ${JSON.stringify(state)}
 
-Return ONLY valid JSON with these fields:
+Return ONLY valid JSON.
+
+Use exactly these fields:
+
 {
-  "thought": "short summary of the agent's reasoning",
-  "search_query": "the search query you used or intended to use",
-  "findings": "short factual summary of relevant web findings",
-  "opportunity": "the opportunity discovered",
-  "action": "the single simulated action chosen",
-  "site": "main website/domain discovered, or empty string",
+  "thought": "short summary of reasoning",
+  "search_query": "search query used or intended",
+  "findings": "short factual summary of useful web findings",
+  "opportunity": "opportunity discovered",
+  "action": "ONE simulated action chosen",
+  "site": "main website/domain discovered or empty string",
   "cost_vnd": 0,
   "reward_vnd": 0,
-  "reason": "why this simulated action was chosen",
-  "lesson": "what the agent learned for future turns"
+  "reason": "why this action was chosen",
+  "lesson": "what was learned for the next turn"
 }
 
-The reward is fictional. Do not claim a website actually paid money.
-Keep simulated rewards and costs realistic.`;
+IMPORTANT:
+- cost_vnd must be a fictional simulated cost.
+- reward_vnd must be a fictional simulated reward.
+- Never claim a real website actually paid the AI.
+- Keep simulated amounts realistic.
+- Do not use a predefined action menu.
+`;
 
+    // Gọi OpenAI Responses API + Web Search
     const response = await client.responses.create({
-      model: "gpt-5.6-luna",
-      tools: [{ type: "web_search" }],
+      model: "gpt-6-luna",
+      tools: [
+        {
+          type: "web_search"
+        }
+      ],
       input: prompt
     });
 
     const text = response.output_text || "";
 
-    // Remove accidental markdown fences if the model adds them.
+    // Làm sạch markdown nếu AI trả về ```json
     const clean = text
       .replace(/^```json\s*/i, "")
       .replace(/^```\s*/i, "")
       .replace(/\s*```$/i, "")
       .trim();
 
+    // Kiểm tra JSON
     let result;
+
     try {
       result = JSON.parse(clean);
-    } catch {
+    } catch (error) {
       return res.status(502).json({
         error: "AI không trả về JSON hợp lệ.",
         raw: text.slice(0, 6000)
       });
     }
 
-    return res.json({ ok: true, result });
+    // Trả cả output_text để frontend hiện tại của bạn đọc được
+    return res.json({
+      ok: true,
+      output_text: clean,
+      result: result
+    });
+
   } catch (err) {
-    console.error(err);
+    console.error("AI ERROR:", err);
+
     return res.status(500).json({
       error: err?.message || "Unknown server error"
     });
   }
 });
 
+// =========================
+// START SERVER
+// =========================
 app.listen(PORT, "0.0.0.0", () => {
-  console.log(`AI Survival backend listening on ${PORT}`);
+  console.log(
+    `AI Survival backend listening on port ${PORT}`
+  );
 });
