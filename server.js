@@ -8,10 +8,12 @@ const PORT = process.env.PORT || 3000;
 app.use(cors({ origin: "*" }));
 app.use(express.json({ limit: "100kb" }));
 
-// Không cho nhiều lượt AI chạy cùng lúc
 let busy = false;
 
-// Trang kiểm tra server
+// =========================
+// HOME
+// =========================
+
 app.get("/", (_req, res) => {
   res.json({
     ok: true,
@@ -20,26 +22,32 @@ app.get("/", (_req, res) => {
   });
 });
 
-// Health check
+// =========================
+// HEALTH CHECK
+// =========================
+
 app.get("/health", (_req, res) => {
   res.json({
     status: "healthy",
     uptime: process.uptime(),
-    busy
+    busy: busy
   });
 });
 
-// AI Agent
+// =========================
+// AI AGENT
+// =========================
+
 app.post("/api/agent", async (req, res) => {
 
-  // Nếu AI đang xử lý lượt trước
+  // Không cho nhiều lượt chạy cùng lúc
   if (busy) {
     return res.status(429).json({
       error: "AI đang xử lý lượt trước. Chờ vài giây rồi thử lại."
     });
   }
 
-  // Kiểm tra API key
+  // Kiểm tra API Key
   if (!process.env.OPENAI_API_KEY) {
     return res.status(500).json({
       error: "OPENAI_API_KEY chưa được cấu hình trên Railway."
@@ -49,6 +57,7 @@ app.post("/api/agent", async (req, res) => {
   busy = true;
 
   try {
+
     const state = req.body?.state || {};
 
     const client = new OpenAI({
@@ -57,21 +66,35 @@ app.post("/api/agent", async (req, res) => {
       timeout: 18000
     });
 
+    // =========================
+    // AI PROMPT
+    // =========================
+
     const prompt = `You are an autonomous agent inside a SAFE SIMULATED ECONOMY.
 
-Goal:
-Survive and grow a fictional VND wallet.
+Your goal is to survive and grow a fictional VND wallet.
+
+IMPORTANT:
 No real money is ever spent or earned.
 
-On this turn:
+On every turn:
 
 1. Search the public web for a legitimate opportunity.
-2. Compare the useful result briefly.
+2. Read and compare useful information.
 3. Discover ONE opportunity yourself.
 4. Do NOT use a fixed action menu.
 5. Choose ONE simulated action.
-6. Estimate a fictional cost/reward.
-7. Give ONE short lesson for the next turn.
+6. Estimate a fictional cost and reward.
+7. Learn one lesson for the next turn.
+
+Allowed:
+- legitimate public opportunities
+- freelance ideas
+- educational opportunities
+- public tools
+- marketplaces
+- discounts
+- legal online opportunities
 
 Forbidden:
 - fraud
@@ -82,37 +105,135 @@ Forbidden:
 - malware
 - gambling
 - illegal activity
-- CAPTCHA/security bypass
+- CAPTCHA bypass
+- security bypass
 - real-money transactions
 - passwords
 - OTPs
 - card numbers
-- private data
+- private information
 - API keys
 
-CURRENT STATE:
+CURRENT SIMULATED STATE:
+
 ${JSON.stringify(state)}
 
-Return ONLY valid JSON:
+Return ONLY valid JSON.
+
+Use exactly this structure:
 
 {
   "thought": "short reasoning summary",
-  "search_query": "query used",
+  "search_query": "search query used",
   "findings": "short factual web finding",
-  "opportunity": "discovered opportunity",
+  "opportunity": "opportunity discovered",
   "action": "one simulated action",
-  "site": "main domain or empty string",
+  "site": "main website or empty string",
   "cost_vnd": 0,
   "reward_vnd": 0,
   "reason": "short reason",
   "lesson": "short lesson"
 }
 
-Keep the answer concise so the turn finishes quickly.
+IMPORTANT:
 
-Never claim a website actually paid money.
-All rewards are fictional.`;
+Keep the response concise.
+
+Never claim that a website actually paid money.
+
+All money in this simulation is fictional.`;
+
+    // =========================
+    // OPENAI
+    // =========================
 
     const response = await client.responses.create(
       {
-       
+        model: "gpt-6-luna",
+
+        tools: [
+          {
+            type: "web_search"
+          }
+        ],
+
+        input: prompt
+      },
+      {
+        timeout: 18000,
+        maxRetries: 0
+      }
+    );
+
+    // =========================
+    // GET AI TEXT
+    // =========================
+
+    const text = response.output_text || "";
+
+    const clean = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    // =========================
+    // PARSE JSON
+    // =========================
+
+    let result;
+
+    try {
+
+      result = JSON.parse(clean);
+
+    } catch (error) {
+
+      return res.status(502).json({
+        error: "AI không trả về JSON hợp lệ.",
+        raw: text.slice(0, 3000)
+      });
+
+    }
+
+    // =========================
+    // SEND RESULT
+    // =========================
+
+    return res.json({
+      ok: true,
+      result: result
+    });
+
+  } catch (err) {
+
+    console.error("Agent error:", err);
+
+    let message = err?.message || "Unknown error";
+
+    if (err?.name === "APIConnectionTimeoutError") {
+      message = "OpenAI/Web Search phản hồi quá lâu. Hãy thử lại sau vài giây.";
+    }
+
+    return res.status(504).json({
+      error: message
+    });
+
+  } finally {
+
+    busy = false;
+
+  }
+});
+
+// =========================
+// START SERVER
+// =========================
+
+app.listen(PORT, "0.0.0.0", () => {
+
+  console.log(
+    `AI Survival backend listening on port ${PORT}`
+  );
+
+});
