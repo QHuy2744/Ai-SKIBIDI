@@ -92,7 +92,7 @@ Never claim a website actually paid money.
 `;
 
     const response = await ai.models.generateContent({
-      model: "gemini-3-flash",
+      model: "gemini-3.8-flash",
       contents: prompt,
       config: {
         tools: [
