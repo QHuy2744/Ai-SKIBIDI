@@ -9,10 +9,71 @@ app.use(express.json());
 
 let busy = false;
 
+async function searchWeb(query) {
+  const url =
+    "https://puri.li/api/search?q=" +
+    encodeURIComponent(query) +
+    "&page=1";
+
+  const response = await fetch(url);
+
+  if (!response.ok) {
+    throw new Error("Web search HTTP " + response.status);
+  }
+
+  return await response.json();
+}
+
+function chooseOpportunity(results) {
+  const items = Array.isArray(results?.results)
+    ? results.results
+    : [];
+
+  if (!items.length) return null;
+
+  const keywords = [
+    "freelance",
+    "remote",
+    "digital",
+    "creator",
+    "content",
+    "design",
+    "developer",
+    "online",
+    "jobs"
+  ];
+
+  const scored = items.map(item => {
+    const text = (
+      (item.title || "") +
+      " " +
+      (item.description || "") +
+      " " +
+      (item.snippet || "")
+    ).toLowerCase();
+
+    let score = Math.random() * 5;
+
+    for (const word of keywords) {
+      if (text.includes(word)) score += 10;
+    }
+
+    return {
+      item,
+      score
+    };
+  });
+
+  scored.sort((a, b) => b.score - a.score);
+
+  return scored[0].item;
+}
+
 app.get("/", (req, res) => {
   res.json({
     ok: true,
-    name: "AI Survival Free"
+    name: "AI Survival Web Agent",
+    mode: "FREE_WEB_SEARCH"
   });
 });
 
@@ -39,60 +100,118 @@ app.post("/api/agent", async (req, res) => {
     const energy = Number(state.energy || 100);
     const knowledge = Number(state.knowledge || 0);
 
-    const choices = [
-      ["Freelance", 18000, 0.25],
-      ["Sản phẩm số", 25000, 0.35],
-      ["Tạo nội dung", 15000, 0.30],
-      ["Nghiên cứu thị trường", 8000, 0.10],
-      ["Tiếp thị", 30000, 0.40]
+    const queries = [
+      "freelance online opportunities",
+      "remote jobs for beginners",
+      "digital products opportunities",
+      "content creator opportunities",
+      "online business ideas"
     ];
 
-    let choice;
+    const query =
+      queries[Math.floor(Math.random() * queries.length)];
 
-    if (wallet < 30000) {
-      choice = choices[3];
-    } else {
-      choice = choices[Math.floor(Math.random() * choices.length)];
+    const searchData = await searchWeb(query);
+
+    const opportunity = chooseOpportunity(searchData);
+
+    if (!opportunity) {
+      return res.json({
+        ok: true,
+        result: {
+          thought: "AI tìm kiếm nhưng chưa tìm được cơ hội phù hợp.",
+          search: query,
+          findings: "Không có kết quả phù hợp.",
+          opportunity: "Không tìm thấy",
+          action: "Tiếp tục nghiên cứu",
+          moneyChange: 0,
+          wallet,
+          knowledge: Math.min(100, knowledge + 1),
+          energy: Math.max(0, energy - 3),
+          day: day + 1,
+          alive: wallet > 0
+        }
+      });
     }
 
-    const name = choice[0];
-    const reward = choice[1];
-    const risk = choice[2];
+    const title =
+      opportunity.title ||
+      "Cơ hội từ web";
 
-    const chance = 0.55 + knowledge / 300 - risk;
-    const success = Math.random() < chance;
+    const link =
+      opportunity.url ||
+      opportunity.link ||
+      "";
 
-    const change = success
-      ? reward
-      : -Math.floor(reward * risk);
+    const snippet =
+      opportunity.description ||
+      opportunity.snippet ||
+      "";
 
-    const newWallet = Math.max(0, wallet + change);
-    const newKnowledge = Math.min(
-      100,
-      knowledge + (success ? 3 : 1)
-    );
+    // Mô phỏng kết quả.
+    // Không thực hiện giao dịch tiền thật.
+    const success =
+      Math.random() < Math.min(
+        0.85,
+        0.45 + knowledge / 200
+      );
+
+    const moneyChange = success
+      ? Math.floor(5000 + Math.random() * 25000)
+      : -Math.floor(1000 + Math.random() * 5000);
+
+    const newWallet =
+      Math.max(0, wallet + moneyChange);
+
+    const newKnowledge =
+      Math.min(
+        100,
+        knowledge + (success ? 4 : 2)
+      );
 
     res.json({
       ok: true,
       result: {
-        thought: `AI phân tích ví ${wallet.toLocaleString("vi-VN")}đ và chọn hướng phù hợp.`,
-        search: `Tìm cơ hội công khai về ${name}.`,
-        findings: `Đánh giá rủi ro ${(risk * 100).toFixed(0)}%.`,
-        opportunity: name,
-        action: success ? "Thành công" : "Thất bại",
-        moneyChange: change,
+        thought:
+          `AI tự chọn truy vấn "${query}", ` +
+          `tìm web và đánh giá các kết quả.`,
+
+        search: query,
+
+        findings:
+          `${title} — ${snippet}`,
+
+        opportunity: title,
+
+        source: link,
+
+        action: success
+          ? "AI mô phỏng thử cơ hội này và thành công."
+          : "AI mô phỏng thử cơ hội này nhưng thất bại.",
+
+        moneyChange,
+
         wallet: newWallet,
+
         knowledge: newKnowledge,
+
         energy: Math.max(0, energy - 5),
+
         day: day + 1,
+
         alive: newWallet > 0,
+
         lesson: success
-          ? "AI ghi nhớ chiến lược thành công."
-          : "AI ghi nhớ rủi ro của chiến lược này."
+          ? "AI ghi nhớ kiểu cơ hội này có tiềm năng."
+          : "AI ghi nhớ rằng cơ hội này có rủi ro.",
+
+        mode: "FREE_WEB_AGENT"
       }
     });
 
   } catch (error) {
+    console.error(error);
+
     res.status(500).json({
       error: error.message
     });
@@ -103,5 +222,7 @@ app.post("/api/agent", async (req, res) => {
 });
 
 app.listen(PORT, "0.0.0.0", () => {
-  console.log("AI Survival running on port " + PORT);
+  console.log(
+    "AI Survival Web Agent running on port " + PORT
+  );
 });
