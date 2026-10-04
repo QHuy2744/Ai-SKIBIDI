@@ -1,141 +1,112 @@
 import express from "express";
 import cors from "cors";
-import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
 
-app.use(cors({ origin: "*" }));
-app.use(express.json({ limit: "100kb" }));
+app.use(cors());
+app.use(express.json());
 
 let busy = false;
 
-app.get("/", (_req, res) => {
+app.get("/", (req, res) => {
   res.json({
     ok: true,
-    name: "AI Survival Gemini Backend"
+    name: "AI Survival Free Backend",
+    message: "Backend is running."
   });
 });
 
-app.get("/health", (_req, res) => {
+app.get("/health", (req, res) => {
   res.json({
     status: "healthy",
-    busy
+    uptime: process.uptime()
   });
 });
 
 app.post("/api/agent", async (req, res) => {
-
   if (busy) {
     return res.status(429).json({
-      error: "AI đang xử lý lượt trước."
-    });
-  }
-
-  if (!process.env.GEMINI_API_KEY) {
-    return res.status(500).json({
-      error: "Thiếu GEMINI_API_KEY trên Railway."
+      error: "AI đang xử lý lượt trước, chờ một chút."
     });
   }
 
   busy = true;
 
   try {
-
     const state = req.body?.state || {};
 
-    const ai = new GoogleGenAI({
-      apiKey: process.env.GEMINI_API_KEY
-    });
+    const wallet = Number(state.wallet ?? 100000);
+    const day = Number(state.day ?? 1);
+    const energy = Number(state.energy ?? 100);
+    const knowledge = Number(state.knowledge ?? 0);
 
-    const prompt = `
-You are an autonomous AI inside a SAFE SIMULATED ECONOMY.
-
-Your goal is to survive and grow a fictional VND wallet.
-
-You must:
-1. Search the public web.
-2. Discover a legitimate opportunity yourself.
-3. Compare useful information.
-4. Choose ONE simulated action.
-5. Estimate fictional cost and reward.
-6. Learn a lesson.
-
-Do NOT use a fixed action menu.
-
-Forbidden:
-fraud, scams, spam, impersonation, credential theft,
-malware, gambling, illegal activity, security bypass,
-real-money transactions, passwords, OTPs, card numbers,
-private information or API keys.
-
-CURRENT STATE:
-${JSON.stringify(state)}
-
-Return ONLY JSON:
-
-{
-  "thought": "short reasoning",
-  "search_query": "search query",
-  "findings": "web findings",
-  "opportunity": "discovered opportunity",
-  "action": "one simulated action",
-  "site": "website",
-  "cost_vnd": 0,
-  "reward_vnd": 0,
-  "reason": "why",
-  "lesson": "lesson"
-}
-
-All money is fictional.
-Never claim a website actually paid money.
-`;
-
-    const response = await ai.models.generateContent({
-      model: "gemini-3.8-flash",
-      contents: prompt,
-      config: {
-        tools: [
-          {
-            googleSearch: {}
-          }
-        ],
-        responseMimeType: "application/json"
+    // Bộ não tự chủ miễn phí
+    const strategies = [
+      {
+        name: "Tìm cơ hội freelance",
+        risk: 0.25,
+        reward: 18000
+      },
+      {
+        name: "Tìm cơ hội bán sản phẩm số",
+        risk: 0.35,
+        reward: 25000
+      },
+      {
+        name: "Tìm cơ hội tạo nội dung",
+        risk: 0.30,
+        reward: 15000
+      },
+      {
+        name: "Nghiên cứu thị trường",
+        risk: 0.10,
+        reward: 8000
+      },
+      {
+        name: "Tìm cơ hội tiếp thị",
+        risk: 0.40,
+        reward: 30000
       }
-    });
+    ];
 
-    const text = response.text || "";
+    // Tự chọn chiến lược dựa trên trạng thái hiện tại
+    let best = strategies[0];
 
-    const clean = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
+    if (wallet < 30000) {
+      best = strategies[3];
+    } else if (knowledge >= 70) {
+      best = strategies[4];
+    } else if (day % 3 === 0) {
+      best = strategies[1];
+    } else {
+      best = strategies[Math.floor(Math.random() * strategies.length)];
+    }
 
-    const result = JSON.parse(clean);
+    const successChance =
+      0.55 +
+      knowledge / 300 -
+      best.risk;
 
-    res.json({
-      ok: true,
-      result
-    });
+    const success = Math.random() < successChance;
 
-  } catch (err) {
+    let moneyChange;
+    let action;
 
-    console.error("Gemini error:", err);
+    if (success) {
+      moneyChange = best.reward;
+      action = "Cơ hội thành công";
+    } else {
+      moneyChange = -Math.floor(best.reward * best.risk);
+      action = "Cơ hội thất bại";
+    }
 
-    res.status(500).json({
-      error: err?.message || "Gemini API error"
-    });
+    const newWallet = Math.max(0, wallet + moneyChange);
+    const newKnowledge = Math.min(
+      100,
+      knowledge + (success ? 3 : 1)
+    );
 
-  } finally {
-
-    busy = false;
-
-  }
-});
-
-app.listen(PORT, "0.0.0.0", () => {
-  console.log(
-    `AI Survival Gemini backend running on port ${PORT}`
-  );
-});
+    const result = {
+      thought:
+        `Ví hiện có ${wallet.toLocaleString("vi-VN")}đ
