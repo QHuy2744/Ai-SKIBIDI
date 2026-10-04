@@ -1,6 +1,6 @@
 import express from "express";
 import cors from "cors";
-import OpenAI from "openai";
+import { GoogleGenAI } from "@google/genai";
 
 const app = express();
 const PORT = process.env.PORT || 3000;
@@ -17,13 +17,13 @@ let busy = false;
 app.get("/", (_req, res) => {
   res.json({
     ok: true,
-    name: "AI Survival Railway Backend",
+    name: "AI Survival Gemini Backend",
     message: "Backend is running."
   });
 });
 
 // =========================
-// HEALTH CHECK
+// HEALTH
 // =========================
 
 app.get("/health", (_req, res) => {
@@ -40,17 +40,15 @@ app.get("/health", (_req, res) => {
 
 app.post("/api/agent", async (req, res) => {
 
-  // Không cho nhiều lượt chạy cùng lúc
   if (busy) {
     return res.status(429).json({
       error: "AI đang xử lý lượt trước. Chờ vài giây rồi thử lại."
     });
   }
 
-  // Kiểm tra API Key
-  if (!process.env.OPENAI_API_KEY) {
+  if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({
-      error: "OPENAI_API_KEY chưa được cấu hình trên Railway."
+      error: "GEMINI_API_KEY chưa được cấu hình trên Railway."
     });
   }
 
@@ -60,17 +58,16 @@ app.post("/api/agent", async (req, res) => {
 
     const state = req.body?.state || {};
 
-    const client = new OpenAI({
-      apiKey: process.env.OPENAI_API_KEY,
-      maxRetries: 0,
-      timeout: 18000
+    const ai = new GoogleGenAI({
+      apiKey: process.env.GEMINI_API_KEY
     });
 
     // =========================
-    // AI PROMPT
+    // PROMPT
     // =========================
 
-    const prompt = `You are an autonomous agent inside a SAFE SIMULATED ECONOMY.
+    const prompt = `
+You are an autonomous agent inside a SAFE SIMULATED ECONOMY.
 
 Your goal is to survive and grow a fictional VND wallet.
 
@@ -135,105 +132,8 @@ Use exactly this structure:
   "lesson": "short lesson"
 }
 
-IMPORTANT:
-
 Keep the response concise.
 
 Never claim that a website actually paid money.
 
-All money in this simulation is fictional.`;
-
-    // =========================
-    // OPENAI
-    // =========================
-
-    const response = await client.responses.create(
-      {
-        model: "gpt-6-luna",
-
-        tools: [
-          {
-            type: "web_search"
-          }
-        ],
-
-        input: prompt
-      },
-      {
-        timeout: 18000,
-        maxRetries: 0
-      }
-    );
-
-    // =========================
-    // GET AI TEXT
-    // =========================
-
-    const text = response.output_text || "";
-
-    const clean = text
-      .replace(/^```json\s*/i, "")
-      .replace(/^```\s*/i, "")
-      .replace(/\s*```$/i, "")
-      .trim();
-
-    // =========================
-    // PARSE JSON
-    // =========================
-
-    let result;
-
-    try {
-
-      result = JSON.parse(clean);
-
-    } catch (error) {
-
-      return res.status(502).json({
-        error: "AI không trả về JSON hợp lệ.",
-        raw: text.slice(0, 3000)
-      });
-
-    }
-
-    // =========================
-    // SEND RESULT
-    // =========================
-
-    return res.json({
-      ok: true,
-      result: result
-    });
-
-  } catch (err) {
-
-    console.error("Agent error:", err);
-
-    let message = err?.message || "Unknown error";
-
-    if (err?.name === "APIConnectionTimeoutError") {
-      message = "OpenAI/Web Search phản hồi quá lâu. Hãy thử lại sau vài giây.";
-    }
-
-    return res.status(504).json({
-      error: message
-    });
-
-  } finally {
-
-    busy = false;
-
-  }
-});
-
-// =========================
-// START SERVER
-// =========================
-
-app.listen(PORT, "0.0.0.0", () => {
-
-  console.log(
-    `AI Survival backend listening on port ${PORT}`
-  );
-
-});
+All money in this simulation
