@@ -10,45 +10,31 @@ app.use(express.json({ limit: "100kb" }));
 
 let busy = false;
 
-// =========================
-// HOME
-// =========================
-
 app.get("/", (_req, res) => {
   res.json({
     ok: true,
-    name: "AI Survival Gemini Backend",
-    message: "Backend is running."
+    name: "AI Survival Gemini Backend"
   });
 });
-
-// =========================
-// HEALTH
-// =========================
 
 app.get("/health", (_req, res) => {
   res.json({
     status: "healthy",
-    uptime: process.uptime(),
-    busy: busy
+    busy
   });
 });
-
-// =========================
-// AI AGENT
-// =========================
 
 app.post("/api/agent", async (req, res) => {
 
   if (busy) {
     return res.status(429).json({
-      error: "AI đang xử lý lượt trước. Chờ vài giây rồi thử lại."
+      error: "AI đang xử lý lượt trước."
     });
   }
 
   if (!process.env.GEMINI_API_KEY) {
     return res.status(500).json({
-      error: "GEMINI_API_KEY chưa được cấu hình trên Railway."
+      error: "Thiếu GEMINI_API_KEY trên Railway."
     });
   }
 
@@ -62,78 +48,94 @@ app.post("/api/agent", async (req, res) => {
       apiKey: process.env.GEMINI_API_KEY
     });
 
-    // =========================
-    // PROMPT
-    // =========================
-
     const prompt = `
-You are an autonomous agent inside a SAFE SIMULATED ECONOMY.
+You are an autonomous AI inside a SAFE SIMULATED ECONOMY.
 
 Your goal is to survive and grow a fictional VND wallet.
 
-IMPORTANT:
-No real money is ever spent or earned.
+You must:
+1. Search the public web.
+2. Discover a legitimate opportunity yourself.
+3. Compare useful information.
+4. Choose ONE simulated action.
+5. Estimate fictional cost and reward.
+6. Learn a lesson.
 
-On every turn:
-
-1. Search the public web for a legitimate opportunity.
-2. Read and compare useful information.
-3. Discover ONE opportunity yourself.
-4. Do NOT use a fixed action menu.
-5. Choose ONE simulated action.
-6. Estimate a fictional cost and reward.
-7. Learn one lesson for the next turn.
-
-Allowed:
-- legitimate public opportunities
-- freelance ideas
-- educational opportunities
-- public tools
-- marketplaces
-- discounts
-- legal online opportunities
+Do NOT use a fixed action menu.
 
 Forbidden:
-- fraud
-- scams
-- spam
-- impersonation
-- credential theft
-- malware
-- gambling
-- illegal activity
-- CAPTCHA bypass
-- security bypass
-- real-money transactions
-- passwords
-- OTPs
-- card numbers
-- private information
-- API keys
+fraud, scams, spam, impersonation, credential theft,
+malware, gambling, illegal activity, security bypass,
+real-money transactions, passwords, OTPs, card numbers,
+private information or API keys.
 
-CURRENT SIMULATED STATE:
-
+CURRENT STATE:
 ${JSON.stringify(state)}
 
-Return ONLY valid JSON.
-
-Use exactly this structure:
+Return ONLY JSON:
 
 {
-  "thought": "short reasoning summary",
-  "search_query": "search query used",
-  "findings": "short factual web finding",
-  "opportunity": "opportunity discovered",
+  "thought": "short reasoning",
+  "search_query": "search query",
+  "findings": "web findings",
+  "opportunity": "discovered opportunity",
   "action": "one simulated action",
-  "site": "main website or empty string",
+  "site": "website",
   "cost_vnd": 0,
   "reward_vnd": 0,
-  "reason": "short reason",
-  "lesson": "short lesson"
+  "reason": "why",
+  "lesson": "lesson"
 }
 
-Keep the response concise.
+All money is fictional.
+Never claim a website actually paid money.
+`;
 
-Never claim that a website actually paid money.
+    const response = await ai.models.generateContent({
+      model: "gemini-3-flash",
+      contents: prompt,
+      config: {
+        tools: [
+          {
+            googleSearch: {}
+          }
+        ],
+        responseMimeType: "application/json"
+      }
+    });
 
-All money in this simulation
+    const text = response.text || "";
+
+    const clean = text
+      .replace(/^```json\s*/i, "")
+      .replace(/^```\s*/i, "")
+      .replace(/\s*```$/i, "")
+      .trim();
+
+    const result = JSON.parse(clean);
+
+    res.json({
+      ok: true,
+      result
+    });
+
+  } catch (err) {
+
+    console.error("Gemini error:", err);
+
+    res.status(500).json({
+      error: err?.message || "Gemini API error"
+    });
+
+  } finally {
+
+    busy = false;
+
+  }
+});
+
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(
+    `AI Survival Gemini backend running on port ${PORT}`
+  );
+});
